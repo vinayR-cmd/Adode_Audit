@@ -26,8 +26,18 @@ from common import (Budget, Robots, fetch, fetch_robots, is_html, normalize_url,
 DEFAULT_MAX_PAGES = 10
 DEFAULT_BUDGET = 240          # seconds for the whole audit (rule 15)
 MIN_DELAY = 0.4               # politeness floor between requests
-MAX_DELAY = 5.0               # cap on a site's declared crawl-delay
 SITEMAP_URL_CAP = 300
+POST_CRAWL_RESERVE = 45       # seconds left for the 5 analyzers + report after crawling
+
+# Crawl-delay policy: honor the FULL declared value, always — never silently
+# fetch faster than a site asked us to. A site's declared Crawl-delay is
+# never truncated. DELAY_PLANNING_CEILING only decides *when* the page sample
+# is proactively shrunk to protect the time budget: at or below the ceiling,
+# the default sample size already fits comfortably; above it, the sample size
+# is reduced up front (never the delay), and the reduction is disclosed in
+# bundle["notes"]. See audit-orchestrator/SKILL.md Step 2 and
+# references/checks.md for the documented rationale.
+DELAY_PLANNING_CEILING = 10.0
 
 _ASSET_RE = re.compile(
     r"\.(?:png|jpe?g|gif|svg|webp|avif|ico|css|js|mjs|woff2?|ttf|eot|zip|gz|"
@@ -258,9 +268,36 @@ def crawl(start_url, max_pages=DEFAULT_MAX_PAGES, timeout=common.DEFAULT_TIMEOUT
     delay = MIN_DELAY
     cd = robots.crawl_delay()
     if cd:
-        delay = max(MIN_DELAY, min(float(cd), MAX_DELAY))
-        notes.append("robots.txt declares crawl-delay %s — honoring %.1fs between "
-                     "requests (capped at %.0fs)" % (cd, delay, MAX_DELAY))
+        # Honor the full declared value — never truncate it. A shorter,
+        # undisclosed delay would mean fetching faster than the site asked us
+        # to, which is the thing this policy exists to rule out.
+        delay = max(MIN_DELAY, float(cd))
+        if delay <= DELAY_PLANNING_CEILING:
+            notes.append("robots.txt declares crawl-delay %s — honoring %.1fs "
+                         "between requests" % (cd, delay))
+        else:
+            # Above the planning ceiling, the default sample size would spend
+            # most of the time budget on delays alone. Protect the budget by
+            # fetching fewer pages at the full honored delay, not by fetching
+            # more pages at a faster, undisclosed rate.
+            usable = max(0.0, budget.remaining() - POST_CRAWL_RESERVE)
+            per_page_est = delay + timeout * 0.2  # delay dominates; small fetch-time margin
+            fittable = max(1, int(usable // per_page_est)) if per_page_est > 0 else 1
+            if fittable < max_pages:
+                notes.append(
+                    "robots.txt declares crawl-delay %s, above the %.0fs planning "
+                    "ceiling — honoring the full %.0fs delay and reducing the page "
+                    "sample from %d to %d pages instead, to keep the crawl inside "
+                    "the %.0fs time budget (never fetching faster than the site "
+                    "requested)." % (cd, DELAY_PLANNING_CEILING, delay, max_pages,
+                                     fittable, budget.seconds))
+                max_pages = fittable
+            else:
+                notes.append("robots.txt declares crawl-delay %s, above the %.0fs "
+                             "planning ceiling — honoring the full %.0fs delay; "
+                             "the requested sample size still fits the time budget."
+                             % (cd, DELAY_PLANNING_CEILING, delay))
+        bundle["max_pages"] = max_pages  # reflect any crawl-delay-driven reduction
 
     # -- sitemap ------------------------------------------------------------
     bundle["sitemap"] = collect_sitemap(origin, robots, timeout, budget, notes)

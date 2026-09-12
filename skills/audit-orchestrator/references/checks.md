@@ -13,8 +13,9 @@ skill's `references/checks.md`.
 | Retries | 1, with backoff | Then `not_verified` for that check only |
 | Redirects | max 5, loops detected | Record the chain as evidence |
 | Bytes per page | ~3 MB cap | One bloated page can't blow the budget |
-| Politeness | ≥0.4 s between requests; honour `Crawl-delay` (capped ~5 s); back off on 429 `Retry-After` | Read-only auditing must not look like an attack |
+| Politeness | ≥0.4 s between requests; honour `Crawl-delay` **in full, uncapped**; back off on 429 `Retry-After` | Read-only auditing must not look like an attack, and must never fetch faster than a site explicitly asked |
 | Total budget | 5 minutes | Stop sampling, still emit a report |
+| Crawl-delay above 10s | Sample size reduced proactively so `(pages × delay)` fits the budget; the delay itself is never shortened | Protect the budget by fetching less, not by fetching faster than requested — see `decision-principles.md` |
 
 Page selection: nav links first, then other internal links, then sitemap
 entries; spread across distinct top-level path prefixes; skip assets and

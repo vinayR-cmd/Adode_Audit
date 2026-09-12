@@ -101,6 +101,16 @@ and it governs every call you make below.
 - Set the budget: per-request timeout 8–12s, one retry with backoff, whole
   audit inside **5 minutes**. Track elapsed time; if the budget runs short,
   stop sampling and report from what you have — never return nothing.
+- **Honor a declared `Crawl-delay` in full — never truncate it.** A site that
+  asks for 30 seconds between requests gets 30 seconds, not a faster,
+  undisclosed rate. Above a **10-second planning ceiling**, protect the time
+  budget by fetching **fewer pages instead of waiting less** — reduce the
+  sample size so `(sample size × delay)` still fits inside the 5-minute
+  budget, and disclose the exact reduction (declared delay, honored delay,
+  original vs. reduced sample size) in `crawl.notes`. At or below the ceiling
+  the default sample size already fits, so no reduction is needed. This
+  reduction is proactive, decided before sampling starts — never a device for
+  quietly fetching faster than requested.
 
 ### Step 3 — Fast path, then judgement
 
