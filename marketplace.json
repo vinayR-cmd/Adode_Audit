@@ -1,0 +1,75 @@
+{
+  "name": "brand-ai-readiness-audit",
+  "version": "1.0.0",
+  "description": "Audit any website, read-only, for why AI assistants fail to find, cite or correctly represent the brand — and why the visitors those assistants send don't stay. Emits one evidence-backed JSON report.",
+  "license": "MIT",
+  "homepage": "https://agentskills.io",
+  "keywords": [
+    "ai-visibility",
+    "ai-discoverability",
+    "generative-engine-optimization",
+    "answer-engine-optimization",
+    "llm-citability",
+    "crawlability",
+    "schema.org",
+    "structured-data",
+    "engagement",
+    "website-audit"
+  ],
+  "skills": [
+    {
+      "id": "audit-orchestrator",
+      "path": "skills/audit-orchestrator",
+      "entrypoint": true,
+      "description": "Entrypoint. Normalizes the URL, establishes the crawl boundary, runs the five concern skills over one shared page sample, deduplicates by root cause, applies the severity rubric, and emits one structured JSON report.",
+      "composes": [
+        "crawl-render-audit",
+        "content-extractability",
+        "entity-trust-audit",
+        "freshness-corroboration",
+        "engagement-audit"
+      ]
+    },
+    {
+      "id": "crawl-render-audit",
+      "path": "skills/crawl-render-audit",
+      "entrypoint": false,
+      "description": "Reach and read: robots.txt rules for named AI crawlers, sitemap presence and coverage, HTTP status and redirect chains, noindex and canonical directives, anti-bot interference, and whether facts exist in the initial HTML or only after JavaScript renders."
+    },
+    {
+      "id": "content-extractability",
+      "path": "skills/content-extractability",
+      "entrypoint": false,
+      "description": "Extract: content depth, concrete statistics instead of vague claims, outbound citations to independent sources, answer-first structure, and facts locked inside images without alt text or inside PDFs."
+    },
+    {
+      "id": "entity-trust-audit",
+      "path": "skills/entity-trust-audit",
+      "entrypoint": false,
+      "description": "Attribute: schema.org JSON-LD presence, validity and coverage, Organization/LocalBusiness identity markup, sameAs anchoring to identity graphs, and brand-name ambiguity."
+    },
+    {
+      "id": "freshness-corroboration",
+      "path": "skills/freshness-corroboration",
+      "entrypoint": false,
+      "description": "Trust: machine-readable and visible dates, stale-year detection, links to independent platforms that could corroborate the brand, and conflicts between on-site claims and third-party statements."
+    },
+    {
+      "id": "engagement-audit",
+      "path": "skills/engagement-audit",
+      "entrypoint": false,
+      "description": "Engage: deep-linkability of topics, whether the landing view confirms what the visitor was promised, navigation and on-site search, mobile viewport, and page payload weight."
+    }
+  ],
+  "requirements": {
+    "python": ">=3.8",
+    "dependencies": [],
+    "note": "Bundled helper scripts are Python standard library only. No pip installs, no model weights, no network access beyond read-only HTTP GET to the audited site."
+  },
+  "safety": {
+    "read_only": true,
+    "respects_robots_txt": true,
+    "modifies_target": false,
+    "authenticated_actions": false
+  }
+}
